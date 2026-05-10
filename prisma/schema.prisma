@@ -1,0 +1,300 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  DOCTOR
+  RECEPTIONIST
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PatientSource {
+  WALK_IN
+  WHATSAPP
+  PHONE_CALL
+  REFERRAL
+  WEBSITE
+}
+
+enum AppointmentType {
+  CHECKUP
+  CLEANING
+  EXTRACTION
+  ROOT_CANAL
+  FILLING
+  CROWN
+  IMPLANT
+  ORTHODONTICS
+  EMERGENCY
+  OTHER
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum ReminderStatus {
+  NOT_SENT
+  SENT_24H
+  SENT_2H
+  CONFIRMED
+  DECLINED
+}
+
+enum ConversationChannel {
+  WHATSAPP
+  SMS
+  CALL
+}
+
+enum ConversationStatus {
+  ACTIVE
+  RESOLVED
+  ESCALATED
+}
+
+enum MissedCallStatus {
+  PENDING
+  SENT
+  CONVERTED
+  IGNORED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Clinic {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  address   String
+  city      String
+  state     String   @default("Tamil Nadu")
+  logo      String?
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  patients Patient[]
+  doctors  Doctor[]
+
+  @@map("clinics")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(RECEPTIONIST)
+  isActive     Boolean  @default(true)
+  clinicId     String
+  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Patient {
+  id             String        @id @default(cuid())
+  name           String
+  phone          String        @unique
+  email          String?
+  dateOfBirth    DateTime?
+  gender         Gender?
+  address        String?
+  bloodGroup     String?
+  allergies      String?
+  medicalHistory Json          @default("{}")
+  notes          String?
+  source         PatientSource @default(WALK_IN)
+  clinicId       String
+  clinic         Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  lastVisitAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  appointments  Appointment[]
+  treatments    Treatment[]
+  conversations Conversation[]
+  missedCalls   MissedCall[]
+  invoices      Invoice[]
+
+  @@index([clinicId])
+  @@index([phone])
+  @@map("patients")
+}
+
+model Doctor {
+  id             String   @id @default(cuid())
+  name           String
+  specialization String   @default("General Dentist")
+  phone          String?
+  email          String?
+  avatar         String?
+  availability   Json     @default("{}")
+  isActive       Boolean  @default(true)
+  clinicId       String
+  clinic         Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  appointments Appointment[]
+
+  @@index([clinicId])
+  @@map("doctors")
+}
+
+model Appointment {
+  id             String            @id @default(cuid())
+  patientId      String
+  patient        Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId       String
+  doctor         Doctor            @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  scheduledAt    DateTime
+  duration       Int               @default(30)
+  type           AppointmentType   @default(CHECKUP)
+  status         AppointmentStatus @default(PENDING)
+  reminderStatus ReminderStatus    @default(NOT_SENT)
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  treatment Treatment?
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("appointments")
+}
+
+model Treatment {
+  id             String      @id @default(cuid())
+  appointmentId  String      @unique
+  appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  procedure      String
+  teeth          String?
+  notes          String?
+  cost           Decimal     @db.Decimal(10, 2)
+  followUpDays   Int?
+  followUpSentAt DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  invoice Invoice?
+
+  @@index([patientId])
+  @@map("treatments")
+}
+
+model Conversation {
+  id        String              @id @default(cuid())
+  patientId String
+  patient   Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  channel   ConversationChannel @default(WHATSAPP)
+  messages  Json                @default("[]")
+  status    ConversationStatus  @default(ACTIVE)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@index([patientId])
+  @@index([status])
+  @@map("conversations")
+}
+
+model MissedCall {
+  id             String           @id @default(cuid())
+  phoneNumber    String
+  patientId      String?
+  patient        Patient?         @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  calledAt       DateTime         @default(now())
+  followUpStatus MissedCallStatus @default(PENDING)
+  followUpSentAt DateTime?
+  notes          String?
+
+  @@index([phoneNumber])
+  @@index([followUpStatus])
+  @@map("missed_calls")
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  invoiceNo   String        @unique
+  patientId   String
+  patient     Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  treatmentId String?       @unique
+  treatment   Treatment?    @relation(fields: [treatmentId], references: [id], onDelete: SetNull)
+  amount      Decimal       @db.Decimal(10, 2)
+  tax         Decimal       @default(0) @db.Decimal(10, 2)
+  discount    Decimal       @default(0) @db.Decimal(10, 2)
+  totalAmount Decimal       @db.Decimal(10, 2)
+  status      InvoiceStatus @default(PENDING)
+  dueDate     DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([patientId])
+  @@index([status])
+  @@map("invoices")
+}
+
+model KnowledgeBase {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String   @db.Text
+  category  String   @default("general")
+  language  String   @default("en")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("knowledge_base")
+}
+
+model MessageTemplate {
+  id       String              @id @default(cuid())
+  name     String              @unique
+  channel  ConversationChannel @default(WHATSAPP)
+  category String
+  body     String              @db.Text
+  language String              @default("en")
+  isActive Boolean             @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@map("message_templates")
+}
