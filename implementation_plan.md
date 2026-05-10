@@ -383,18 +383,18 @@ erDiagram
 
 ## 7. Implementation Phases
 
-### Phase 1 — Foundation (Week 1–2)
-- [ ] Project setup (Next.js, Prisma, Supabase, Auth)
-- [ ] Database schema + migrations
-- [ ] Auth system (login, roles, protected routes)
-- [ ] Basic dashboard layout with sidebar navigation
-- [ ] Patient CRUD (create, read, update, search)
+### Phase 1 — Foundation (Week 1–2) ✅
+- [x] Project setup (Next.js, Prisma, Supabase, Auth)
+- [x] Database schema + migrations
+- [x] Auth system (login, roles, protected routes)
+- [x] Basic dashboard layout with sidebar navigation
+- [x] Patient CRUD (create, read, update, search)
 
-### Phase 2 — Appointments & Calendar (Week 3–4)
-- [ ] Appointment booking system
-- [ ] Interactive calendar (FullCalendar)
-- [ ] Doctor availability management
-- [ ] Appointment status management
+### Phase 2 — Appointments & Calendar (Week 3–4) ✅
+- [x] Appointment booking system
+- [x] Interactive calendar (FullCalendar)
+- [x] Doctor availability management
+- [x] Appointment status management
 
 ### Phase 3 — WhatsApp Integration (Week 5–6)
 - [ ] Meta Cloud API setup + webhook handler
